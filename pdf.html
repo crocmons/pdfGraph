@@ -1,0 +1,156 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>CrimePDF File</title>
+    <!-- Include Tailwind CSS stylesheet -->
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.7/dist/tailwind.min.css" rel="stylesheet">
+
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        font-family: sans-serif;
+      }
+      .chartMenu {
+        width: 100vw;
+        height: 40px;
+      }
+      .chartMenu p {
+        padding: 10px;
+        font-size: 20px;
+      }
+      .chartCard {
+        width: 100vw;
+        height: calc(100vh - 40px);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+      .chartBox {
+        width: 70vw;
+        padding: 20px;
+        border-radius: 20px;
+        border: solid 3px rgb(203, 227, 242);
+        background: white;
+      }
+    </style>
+  </head>
+  <body>
+    <!-- Navbar with Tailwind CSS classes -->
+    <nav class="flex mx-2 justify-between">
+        <img class="w-200 h-200 object-contain" src="logo.png" alt="logo" />
+        <p class='text-black font-bold'>123 Main Street, Dover, NH 03820-4667</p>
+    </nav>
+    <div class="chartCard">
+      <div class="chartBox">
+        <button class="p-2 text-white bg-black rounded-md" onclick="downloadPDF()">Get PDF</button>
+        <canvas id="myChart"></canvas>
+      </div>
+    </div>
+    <div class='flex justify-between mx-3 mb-3'>
+        <h3 class='text-sm text-blue-600 font-bold'>Report Generated on September 26, 2023</h3>
+        <p class='text-sm font-bold'>RealAssist Property Report | Page 1 of 25</p>
+    </div>
+
+    <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/chart.js/dist/chart.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js" integrity="sha512-q+4liFwdPC/bNdhUpZx6aXDx/h77yEQtn4I1slHydcbZK34nLaR3cAeYSJshoxIOq3mjEf7xJE8YWIUHMn+oCQ==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/1.3.2/jspdf.debug.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script> <!-- Include Axios for making API requests -->
+
+    <script>
+    // setup 
+    
+    const data = {
+      labels: [],
+      datasets: [{
+        label: 'Burglary',
+        data: [],
+        backgroundColor: 'rgba(10, 40, 252, 0.2)',
+        borderColor: 'rgba(10, 40, 252, 1)',
+        borderWidth: 2,
+        fill: false,
+      }]
+    };
+
+    const bgColor = {
+       id: 'bgColor',
+       beforeDraw:(chart, options) =>{
+        const { ctx, width, height} = chart;
+        ctx.fillStyle = 'white';
+        ctx.fillRect(0, 0, width, height);
+        ctx.restore();
+       }
+    }
+
+    // config 
+    const config = {
+      type: 'line', // Change type to 'line'
+      data,
+      options: {
+        scales: {
+          x: {
+            beginAtZero: true,
+          },
+          y: {
+            beginAtZero: true,
+          }
+        }
+      },
+      plugins:[bgColor]
+    };
+
+    // render init block
+    const myChart = new Chart(
+      document.getElementById('myChart'),
+      config
+    );
+
+    // Function to fetch and update the crime graph data
+    async function fetchCrimeGraphData() {
+      try {
+        const response = await axios.get(
+          'https://api.usa.gov/crime/fbi/cde/arrest/state/AK/all?from=2015&to=2020&API_KEY=iiHnOKfno2Mgkt5AynpvPpUQTEyxE77jo1RU8PIv'
+        );
+
+        const { data } = response;
+
+        if (data && Array.isArray(data.data)) {
+          // Assuming the data structure matches your expectations
+          const labels = data.data.map((crime) => crime.data_year);
+          const burglaryData = data.data.map((crime) => crime.Burglary);
+
+          // Update chart data
+          myChart.data.labels = labels;
+          myChart.data.datasets[0].data = burglaryData;
+          myChart.update();
+        } else {
+          console.error('Invalid data format received from the API.');
+        }
+      } catch (error) {
+        console.error('Error fetching data:', error);
+      }
+    }
+
+    // Call the function to fetch and update data when the page loads
+    fetchCrimeGraphData();
+
+    function downloadPDF(){
+        const canvas = document.getElementById('myChart');
+        const pdfImage = canvas.toDataURL('image/jpeg', 1.0);
+        console.log(pdfImage);
+        let pdf = new jsPDF('landscape')
+        pdf.setFontSize(20)
+        pdf.addImage(pdfImage,'JPEG', 15, 15, 280, 150);
+        pdf.text(15,15, 'crime graph')
+        pdf.save('myChart.pdf');
+    }
+
+    // Instantly assign Chart.js version
+    const chartVersion = document.getElementById('chartVersion');
+    chartVersion.innerText = Chart.version;
+    </script>
+
+  </body>
+</html>
